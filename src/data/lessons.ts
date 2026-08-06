@@ -34,9 +34,72 @@ export const LESSONS: Lesson[] = [
     }),
   },
   {
+    id: 'add',
+    track: 'basics',
+    title: '3. Addition',
+    objective: 'Add two numbers with + and print A + B = 42.',
+    starterPath: 'BP/ADD.b',
+    hints: ['RESULT = A + B', '15 + 27 = 42'],
+    validate: (out) => ({
+      pass: /A \+ B = 42/.test(out),
+      message: /A \+ B = 42/.test(out) ? 'Pass — addition works.' : 'Expected A + B = 42',
+    }),
+  },
+  {
+    id: 'subtract',
+    track: 'basics',
+    title: '4. Subtraction',
+    objective: 'Subtract with - and print A - B = 32.',
+    starterPath: 'BP/SUBTRACT.b',
+    hints: ['RESULT = A - B', '50 - 18 = 32'],
+    validate: (out) => ({
+      pass: /A - B = 32/.test(out),
+      message: /A - B = 32/.test(out) ? 'Pass — subtraction works.' : 'Expected A - B = 32',
+    }),
+  },
+  {
+    id: 'multiply',
+    track: 'basics',
+    title: '5. Multiplication',
+    objective: 'Multiply with * and print A * B = 96.',
+    starterPath: 'BP/MULTIPLY.b',
+    hints: ['RESULT = A * B', '12 * 8 = 96'],
+    validate: (out) => ({
+      pass: /A \* B = 96/.test(out),
+      message: /A \* B = 96/.test(out) ? 'Pass — multiplication works.' : 'Expected A * B = 96',
+    }),
+  },
+  {
+    id: 'remainder',
+    track: 'basics',
+    title: '6. Remainder (MOD)',
+    objective: 'Use MOD(A, B) so remainder of 17 / 5 prints as 2.',
+    starterPath: 'BP/REMAINDER.b',
+    hints: ['MOD(A, B) or REM(A, B)', '17 MOD 5 = 2'],
+    validate: (out) => ({
+      pass: /MOD\(A, B\) = 2/.test(out),
+      message: /MOD\(A, B\) = 2/.test(out) ? 'Pass — remainder works.' : 'Expected MOD(A, B) = 2',
+    }),
+  },
+  {
+    id: 'arithmetic-all',
+    track: 'basics',
+    title: '7. All arithmetic ops',
+    objective: 'Run ARITHMETIC.b and confirm add/subtract/multiply/remainder lines.',
+    starterPath: 'BP/ARITHMETIC.b',
+    hints: ['Open BP/ARITHMETIC.b', 'Compile & Run'],
+    validate: (out) => ({
+      pass: /Add\s*:.*26/.test(out) && /Remainder\s*:.*2/.test(out),
+      message:
+        /Add\s*:.*26/.test(out) && /Remainder\s*:.*2/.test(out)
+          ? 'Pass — full arithmetic demo works.'
+          : 'Expected Add ... 26 and Remainder ... 2',
+    }),
+  },
+  {
     id: 'dyn-array',
     track: 'arrays',
-    title: '3. Dynamic arrays',
+    title: '8. Dynamic arrays',
     objective: 'Build a record with FM markers and extract field 1.',
     starterPath: 'BP/DYN.ARRAY.b',
     hints: ['$INSERT I_EQUATE', 'REC<1> extracts field 1'],
@@ -48,7 +111,7 @@ export const LESSONS: Lesson[] = [
   {
     id: 'for-loop',
     track: 'control',
-    title: '4. FOR / NEXT',
+    title: '9. FOR / NEXT',
     objective: 'Loop I from 1 to 5 and print each value.',
     starterPath: 'BP/LOOPS.b',
     hints: ['FOR I = 1 TO 5 ... NEXT I'],
@@ -60,7 +123,7 @@ export const LESSONS: Lesson[] = [
   {
     id: 'gosub',
     track: 'subroutines',
-    title: '5. GOSUB structure',
+    title: '10. GOSUB structure',
     objective: 'Use INIT/PROCESS/FINAL labels with GOSUB/RETURN.',
     starterPath: 'BP/GOSUB.DEMO.b',
     hints: ['GOSUB LABEL then LABEL: ... RETURN'],
@@ -72,7 +135,7 @@ export const LESSONS: Lesson[] = [
   {
     id: 'file-io',
     track: 'files',
-    title: '6. File OPEN/READ',
+    title: '11. File OPEN/READ',
     objective: 'Read customer 100001 from F.CUSTOMER and print the name.',
     starterPath: 'BP/FILE.IO.b',
     hints: ['OPEN FN TO F ELSE ... END', 'READ REC FROM F, ID ELSE ...'],
@@ -84,7 +147,7 @@ export const LESSONS: Lesson[] = [
   {
     id: 't24-sub',
     track: 't24',
-    title: '7. T24-style subroutine',
+    title: '12. T24-style subroutine',
     objective: 'Compile V.AUT.CNT, set ID.NEW, run and show account total.',
     starterPath: 'BP/V.AUT.CNT.b',
     hints: [

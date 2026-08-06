@@ -26,6 +26,79 @@ END
 `,
   },
   {
+    path: 'BP/ADD.b',
+    content: `* Addition example — A + B
+PROGRAM ADD
+    A = 15
+    B = 27
+    RESULT = A + B
+    CRT "A = ":A
+    CRT "B = ":B
+    CRT "A + B = ":RESULT
+END
+`,
+  },
+  {
+    path: 'BP/SUBTRACT.b',
+    content: `* Subtraction example — A - B
+PROGRAM SUBTRACT
+    A = 50
+    B = 18
+    RESULT = A - B
+    CRT "A = ":A
+    CRT "B = ":B
+    CRT "A - B = ":RESULT
+END
+`,
+  },
+  {
+    path: 'BP/MULTIPLY.b',
+    content: `* Multiplication example — A * B
+PROGRAM MULTIPLY
+    A = 12
+    B = 8
+    RESULT = A * B
+    CRT "A = ":A
+    CRT "B = ":B
+    CRT "A * B = ":RESULT
+END
+`,
+  },
+  {
+    path: 'BP/REMAINDER.b',
+    content: `* Remainder / modulus examples — MOD and REM
+* Remainder is what is left after division (e.g. 17 / 5 = 3 remainder 2)
+PROGRAM REMAINDER
+    A = 17
+    B = 5
+    R1 = MOD(A, B)
+    R2 = REM(A, B)
+    CRT "A = ":A
+    CRT "B = ":B
+    CRT "MOD(A, B) = ":R1
+    CRT "REM(A, B) = ":R2
+    CRT "Check: ":(B * INT(A / B) + R1):" should equal A"
+END
+`,
+  },
+  {
+    path: 'BP/ARITHMETIC.b',
+    content: `* All four operations in one program
+PROGRAM ARITHMETIC
+    A = 20
+    B = 6
+    CRT "===== Arithmetic Demo ====="
+    CRT "A = ":A:"   B = ":B
+    CRT "Add       : ":A:" + ":B:" = ":(A + B)
+    CRT "Subtract  : ":A:" - ":B:" = ":(A - B)
+    CRT "Multiply  : ":A:" * ":B:" = ":(A * B)
+    CRT "Divide    : ":A:" / ":B:" = ":(A / B)
+    CRT "Remainder : MOD(":A:", ":B:") = ":MOD(A, B)
+    CRT "==========================="
+END
+`,
+  },
+  {
     path: 'BP/DYN.ARRAY.b',
     content: `* Dynamic arrays using FM / VM / SM
 PROGRAM DYN.ARRAY

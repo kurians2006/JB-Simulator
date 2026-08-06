@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import { compileSource } from '../engine/compiler'
 import { runUnit } from '../engine/runtime'
 import { globalVfs } from '../engine/vfs'
@@ -48,7 +49,9 @@ function initialFiles(): Record<string, string> {
 
 globalVfs.seedDemo()
 
-export const useIdeStore = create<IdeState>((set, get) => ({
+export const useIdeStore = create<IdeState>()(
+  persist(
+    (set, get) => ({
   files: initialFiles(),
   openPath: DEFAULT_OPEN,
   compiled: {},
@@ -252,9 +255,22 @@ END
     })
   },
 
-  resetVfs: () => {
-    globalVfs.loadSnapshot({})
-    globalVfs.seedDemo()
-    set({ status: 'VFS reset to demo data' })
-  },
-}))
+      resetVfs: () => {
+        globalVfs.loadSnapshot({})
+        globalVfs.seedDemo()
+        set({ status: 'VFS reset to demo data' })
+      },
+    }),
+    {
+      name: 'jb-simulator-workspace',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        files: state.files,
+        openPath: state.openPath,
+        idNew: state.idNew,
+        inputBuffer: state.inputBuffer,
+        activeLessonId: state.activeLessonId,
+      }),
+    },
+  ),
+)

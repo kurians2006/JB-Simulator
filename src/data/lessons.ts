@@ -25,12 +25,14 @@ export const LESSONS: Lesson[] = [
     id: 'concat',
     track: 'basics',
     title: '2. Concatenation',
-    objective: 'Print Welcome to Ooredoo using the : operator.',
+    objective: 'Print Learning JBasic for Temenos Transact using the : operator.',
     starterPath: 'BP/VARS.b',
-    hints: ['NAME = "Ooredoo"', 'CRT "Welcome to ":NAME'],
+    hints: ['PRODUCT = "Temenos Transact"', 'CRT "Learning JBasic for ":PRODUCT'],
     validate: (out) => ({
-      pass: /Welcome to Ooredoo/i.test(out),
-      message: /Welcome to Ooredoo/i.test(out) ? 'Pass — concatenation works.' : 'Expected "Welcome to Ooredoo"',
+      pass: /Learning JBasic for Temenos Transact/i.test(out),
+      message: /Learning JBasic for Temenos Transact/i.test(out)
+        ? 'Pass — concatenation works.'
+        : 'Expected "Learning JBasic for Temenos Transact"',
     }),
   },
   {

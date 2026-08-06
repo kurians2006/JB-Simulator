@@ -16,10 +16,10 @@ END
     path: 'BP/VARS.b',
     content: `* Variables, concatenation and arithmetic
 PROGRAM VARS
-    NAME = "Ooredoo"
+    PRODUCT = "Temenos Transact"
     A = 10
     B = 25
-    CRT "Welcome to ":NAME
+    CRT "Learning JBasic for ":PRODUCT
     CRT "Sum = ":(A + B)
     CRT "Product = ":(A * B)
 END

@@ -465,6 +465,79 @@ button {
   color: var(--info);
 }
 
+.path-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  background: rgba(227, 28, 35, 0.08);
+}
+
+.path-progress {
+  font-family: var(--font);
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.path-bar {
+  margin-top: 0.35rem;
+  height: 6px;
+  border-radius: 999px;
+  background: #1a2733;
+  overflow: hidden;
+}
+
+.path-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+}
+
+.path-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.group-block {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.group-block.active {
+  border-color: rgba(227, 28, 35, 0.55);
+}
+
+.group-head {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  padding: 0.45rem 0.55rem;
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.group-body {
+  border-top: 1px solid var(--border);
+  padding: 0.4rem;
+  max-height: 160px;
+  overflow: auto;
+}
+
 .status-bar {
   display: flex;
   justify-content: space-between;

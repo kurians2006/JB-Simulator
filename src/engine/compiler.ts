@@ -53,7 +53,7 @@ function expandInserts(rawLines: RawLine[], fileName: string, errors: CompileErr
 }
 
 interface BlockFrame {
-  type: 'if' | 'for' | 'loop' | 'else'
+  type: 'if' | 'for' | 'loop' | 'else' | 'case' | 'case-branch'
   stmt: Statement
   thenDone?: boolean
 }
@@ -161,6 +161,51 @@ function buildBlocks(rawLines: RawLine[], fileName: string, errors: CompileError
         return
       }
 
+      // BEGIN CASE
+      if (s.kind === 'exprStmt' && s.expr.kind === 'call' && s.expr.name === '__BEGIN_CASE') {
+        const caseStmt: Extract<Statement, { kind: 'case' }> = {
+          kind: 'case',
+          line: s.line,
+          branches: [],
+        }
+        current().list.push(caseStmt)
+        stack.push({ list: [], frame: { type: 'case', stmt: caseStmt } })
+        return
+      }
+
+      // CASE expression  (starts / switches a branch)
+      if (s.kind === 'exprStmt' && s.expr.kind === 'call' && s.expr.name === '__CASE') {
+        const frame = current().frame
+        let caseStmt: Extract<Statement, { kind: 'case' }> | null = null
+        if (frame?.type === 'case-branch') {
+          stack.pop()
+          const parent = current().frame
+          if (parent?.type === 'case') caseStmt = parent.stmt as Extract<Statement, { kind: 'case' }>
+        } else if (frame?.type === 'case') {
+          caseStmt = frame.stmt as Extract<Statement, { kind: 'case' }>
+        }
+        if (!caseStmt) {
+          err(errors, fileName, s.line, "'CASE' without matching 'BEGIN CASE'", 'TAFJ-BLOCK')
+          return
+        }
+        const cond = s.expr.args[0] ?? { kind: 'number', value: 1 }
+        const branch = { condition: cond, body: [] as Statement[] }
+        caseStmt.branches.push(branch)
+        stack.push({ list: branch.body, frame: { type: 'case-branch', stmt: caseStmt } })
+        return
+      }
+
+      // END CASE
+      if (s.kind === 'exprStmt' && s.expr.kind === 'call' && s.expr.name === '__END_CASE') {
+        while (current().frame && (current().frame?.type === 'case-branch' || current().frame?.type === 'case')) {
+          const t = current().frame!.type
+          stack.pop()
+          if (t === 'case') return
+        }
+        err(errors, fileName, s.line, "'END CASE' without matching 'BEGIN CASE'", 'TAFJ-BLOCK')
+        return
+      }
+
       // END — closes IF or program
       if (s.kind === 'end') {
         const frame = current().frame
@@ -253,6 +298,9 @@ function collectLabels(stmts: Statement[], labels: Record<string, number>, list 
     }
     if (s.kind === 'for') collectLabels(s.body, labels)
     if (s.kind === 'loop') collectLabels(s.body, labels)
+    if (s.kind === 'case') {
+      for (const b of s.branches) collectLabels(b.body, labels)
+    }
   }
 }
 
@@ -280,6 +328,9 @@ function validateReservedAssignments(stmts: Statement[], fileName: string, error
       }
       if (s.kind === 'for') walk(s.body)
       if (s.kind === 'loop') walk(s.body)
+      if (s.kind === 'case') {
+        for (const b of s.branches) walk(b.body)
+      }
     }
   }
   walk(stmts)

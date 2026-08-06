@@ -25,7 +25,7 @@ interface IdeState {
   lessonMessage: string
   idNew: string
   inputBuffer: string
-  rightTab: 'terminal' | 'errors' | 'lessons' | 'vfs'
+  rightTab: 'terminal' | 'errors' | 'lessons' | 'docs' | 'vfs'
   setOpenPath: (path: string) => void
   setContent: (content: string) => void
   createFile: (path: string) => void
@@ -38,6 +38,7 @@ interface IdeState {
   run: () => Promise<void>
   compileAndRun: () => Promise<void>
   selectLesson: (id: string) => void
+  tryExample: (name: string, source: string) => void
   resetVfs: () => void
 }
 
@@ -265,7 +266,28 @@ END
     })
   },
 
-      resetVfs: () => {
+  tryExample: (name, source) => {
+    const safe = name
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '.')
+      .replace(/^\.+|\.+$/g, '')
+      .slice(0, 40)
+    const path = `BP/DEMO.${safe || 'EXAMPLE'}.b`
+    const { files } = get()
+    set({
+      files: { ...files, [path]: source.endsWith('\n') ? source : `${source}\n` },
+      openPath: path,
+      rightTab: 'terminal',
+      status: `Opened example ${path}`,
+      errors: [],
+    })
+    // Compile & run shortly after state settles
+    queueMicrotask(() => {
+      void get().compileAndRun()
+    })
+  },
+
+  resetVfs: () => {
         globalVfs.loadSnapshot({})
         globalVfs.seedDemo()
         set({ status: 'VFS reset to demo data' })

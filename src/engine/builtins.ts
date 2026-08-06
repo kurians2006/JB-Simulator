@@ -24,7 +24,18 @@ export const builtins: Record<string, BuiltinFn> = {
   SEQ: (a) => String(asString(a[0]).charCodeAt(0) || 0),
   UPCASE: (a) => asString(a[0]).toUpperCase(),
   DOWNCASE: (a) => asString(a[0]).toLowerCase(),
+  LOWCASE: (a) => asString(a[0]).toLowerCase(),
   TRIM: (a) => asString(a[0]).trim(),
+  TRIMF: (a) => asString(a[0]).replace(/^\s+/, ''),
+  TRIMB: (a) => asString(a[0]).replace(/\s+$/, ''),
+  LEFT: (a) => asString(a[0]).slice(0, Math.max(0, asNumber(a[1]))),
+  RIGHT: (a) => {
+    const s = asString(a[0])
+    const n = Math.max(0, asNumber(a[1]))
+    return s.slice(Math.max(0, s.length - n))
+  },
+  NEG: (a) => formatNumber(-asNumber(a[0])),
+  SWAP: (a) => asString(a[0]).split(asString(a[1])).join(asString(a[2])),
   FIELD: (a) => {
     const str = asString(a[0])
     const delim = asString(a[1]) || FM

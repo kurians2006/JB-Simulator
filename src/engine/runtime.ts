@@ -37,6 +37,8 @@ type Control =
   | { type: 'goto'; label: string }
   | { type: 'stop'; code: number }
   | { type: 'abort' }
+  | { type: 'break' }
+  | { type: 'continue' }
 
 export class Interpreter {
   private vars = new Map<string, JbValue>()
@@ -46,6 +48,7 @@ export class Interpreter {
   private labelIndex = new Map<string, { stmts: Statement[]; index: number }>()
   private stepCount = 0
   private maxSteps = 100_000
+  private precision = 4
 
   private unit: CompiledUnit
   private hooks: RuntimeHooks
@@ -124,6 +127,9 @@ export class Interpreter {
       }
       if (s.kind === 'for') this.indexLabels(s.body)
       if (s.kind === 'loop') this.indexLabels(s.body)
+      if (s.kind === 'case') {
+        for (const b of s.branches) this.indexLabels(b.body)
+      }
     })
   }
 
@@ -190,12 +196,16 @@ export class Interpreter {
           for (let v = from; v <= to; v += step) {
             this.vars.set(s.variable, String(v))
             const ctrl = await this.execBlock(s.body)
+            if (ctrl.type === 'break') break
+            if (ctrl.type === 'continue') continue
             if (ctrl.type !== 'none') return ctrl
           }
         } else {
           for (let v = from; v >= to; v += step) {
             this.vars.set(s.variable, String(v))
             const ctrl = await this.execBlock(s.body)
+            if (ctrl.type === 'break') break
+            if (ctrl.type === 'continue') continue
             if (ctrl.type !== 'none') return ctrl
           }
         }
@@ -207,15 +217,45 @@ export class Interpreter {
           if (s.whileCond && !isTruthy(this.eval(s.whileCond))) break
           if (s.untilCond && isTruthy(this.eval(s.untilCond))) break
           const ctrl = await this.execBlock(s.body)
-          if (ctrl.type !== 'none') return ctrl
+          if (ctrl.type === 'break') break
+          if (ctrl.type === 'continue') {
+            // fall through to condition checks
+          } else if (ctrl.type !== 'none') {
+            return ctrl
+          }
           if (s.whileCond && !isTruthy(this.eval(s.whileCond))) break
           if (s.untilCond && isTruthy(this.eval(s.untilCond))) break
-          // If no while/until, require break via STOP/RETURN — still guard infinite
           if (!s.whileCond && !s.untilCond) {
-            // allow one-shot body then check until at end pattern handled above
-            // Infinite LOOP without condition: keep going until STOP
+            // Infinite LOOP without condition continues until STOP/BREAK
           }
         }
+        return { type: 'none' }
+      }
+
+      case 'case': {
+        for (const branch of s.branches) {
+          if (isTruthy(this.eval(branch.condition))) {
+            return this.execBlock(branch.body)
+          }
+        }
+        return { type: 'none' }
+      }
+
+      case 'break':
+        return { type: 'break' }
+
+      case 'continue':
+        return { type: 'continue' }
+
+      case 'precision': {
+        this.precision = Math.max(0, Math.min(9, Math.trunc(asNumber(this.eval(s.digits)))))
+        return { type: 'none' }
+      }
+
+      case 'sleep': {
+        const secs = asNumber(this.eval(s.seconds))
+        const ms = Math.max(0, Math.min(5000, secs * 1000))
+        await new Promise((resolve) => setTimeout(resolve, ms))
         return { type: 'none' }
       }
 
@@ -368,7 +408,7 @@ export class Interpreter {
       case 'unary': {
         const v = this.eval(expr.expr)
         if (expr.op === 'NOT') return isTruthy(v) ? '0' : '1'
-        if (expr.op === '-') return formatNumber(-asNumber(v))
+        if (expr.op === '-') return formatNumber(-asNumber(v), this.precision)
         return v
       }
       case 'binary': {
@@ -381,15 +421,15 @@ export class Interpreter {
         const r = asNumber(this.eval(expr.right))
         switch (expr.op) {
           case '+':
-            return formatNumber(l + r)
+            return formatNumber(l + r, this.precision)
           case '-':
-            return formatNumber(l - r)
+            return formatNumber(l - r, this.precision)
           case '*':
-            return formatNumber(l * r)
+            return formatNumber(l * r, this.precision)
           case '/':
-            return formatNumber(r === 0 ? 0 : l / r)
+            return formatNumber(r === 0 ? 0 : l / r, this.precision)
           case '^':
-            return formatNumber(l ** r)
+            return formatNumber(l ** r, this.precision)
           default:
             return ''
         }

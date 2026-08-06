@@ -52,6 +52,11 @@ export type Statement =
   | { kind: 'if'; line: number; condition: Expr; thenBranch: Statement[]; elseBranch: Statement[] }
   | { kind: 'for'; line: number; variable: string; from: Expr; to: Expr; step?: Expr; body: Statement[] }
   | { kind: 'loop'; line: number; whileCond?: Expr; untilCond?: Expr; body: Statement[] }
+  | { kind: 'case'; line: number; branches: Array<{ condition: Expr; body: Statement[] }> }
+  | { kind: 'break'; line: number }
+  | { kind: 'continue'; line: number }
+  | { kind: 'precision'; line: number; digits: Expr }
+  | { kind: 'sleep'; line: number; seconds: Expr }
   | { kind: 'gosub'; line: number; label: string }
   | { kind: 'goto'; line: number; label: string }
   | { kind: 'call'; line: number; name: string; args: Expr[] }

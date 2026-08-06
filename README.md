@@ -9,6 +9,7 @@ Browser-based **JBasic / InfoBASIC** learning lab with a **TAFJ-style compile â†
 - Monaco editor with JBasic syntax highlighting
 - Create / edit / delete `.b` programs under `BP/`
 - Automatic browser storage: edited and newly created files survive page refreshes
+- **Docs** tab: all jBC statements/functions from [JBC1](https://static.zumasys.com/jbase/r99/knowledgebase/manuals/3.0/30manpages/man/JBC1.htm) with beginner explanations + runnable examples
 - **Compile** logs (`tCompile`-style), error panel with line numbers
 - **Run** with CRT/PRINT terminal output
 - In-memory VFS (`OPEN` / `READ` / `WRITE`) with demo `F.CUSTOMER` data

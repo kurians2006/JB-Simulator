@@ -120,12 +120,19 @@ class LineParser {
     }
 
     if (this.matchIdent('END')) {
-      // Support "END ELSE" on one line (common InfoBASIC style)
+      // Support "END ELSE" and "END CASE" on one line
       if (this.matchIdent('ELSE')) {
         return {
           kind: 'exprStmt',
           line: this.line,
           expr: { kind: 'call', name: '__END_ELSE', args: [] },
+        }
+      }
+      if (this.matchIdent('CASE')) {
+        return {
+          kind: 'exprStmt',
+          line: this.line,
+          expr: { kind: 'call', name: '__END_CASE', args: [] },
         }
       }
       return { kind: 'end', line: this.line }
@@ -148,8 +155,44 @@ class LineParser {
     }
     if (this.matchIdent('NULL')) return { kind: 'null', line: this.line }
 
-    if (this.matchIdent('CRT') || this.matchIdent('PRINT')) {
-      const kind = this.tokens[this.i - 1]!.value === 'CRT' ? 'crt' : 'print'
+    if (this.matchIdent('BREAK')) return { kind: 'break', line: this.line }
+    if (this.matchIdent('CONTINUE')) return { kind: 'continue', line: this.line }
+
+    if (this.matchIdent('PRECISION')) {
+      return { kind: 'precision', line: this.line, digits: this.parseExpr() }
+    }
+
+    if (this.matchIdent('SLEEP') || this.matchIdent('MSLEEP') || this.matchIdent('RQM')) {
+      const seconds = this.atEnd() ? { kind: 'number', value: 1 } as Expr : this.parseExpr()
+      return { kind: 'sleep', line: this.line, seconds }
+    }
+
+    if (this.matchIdent('BEGIN')) {
+      this.matchIdent('CASE')
+      return {
+        kind: 'exprStmt',
+        line: this.line,
+        expr: { kind: 'call', name: '__BEGIN_CASE', args: [] },
+      }
+    }
+
+    if (this.matchIdent('CASE')) {
+      if (this.atEnd()) {
+        return {
+          kind: 'exprStmt',
+          line: this.line,
+          expr: { kind: 'call', name: '__CASE', args: [{ kind: 'number', value: 1 }] },
+        }
+      }
+      return {
+        kind: 'exprStmt',
+        line: this.line,
+        expr: { kind: 'call', name: '__CASE', args: [this.parseExpr()] },
+      }
+    }
+
+    if (this.matchIdent('CRT') || this.matchIdent('PRINT') || this.matchIdent('DISPLAY')) {
+      const kind = this.tokens[this.i - 1]!.value === 'PRINT' ? 'print' : 'crt'
       const exprs: Expr[] = []
       let suppressNl = false
       if (!this.atEnd()) {
@@ -217,7 +260,7 @@ class LineParser {
       }
     }
 
-    if (this.matchIdent('REPEAT') || this.matchIdent('NEXT') || this.matchIdent('ELSE') || this.matchIdent('CASE')) {
+    if (this.matchIdent('REPEAT') || this.matchIdent('NEXT') || this.matchIdent('ELSE')) {
       return {
         kind: 'exprStmt',
         line: this.line,

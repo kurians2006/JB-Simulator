@@ -111,9 +111,21 @@ export const LESSONS: Lesson[] = [
     }),
   },
   {
+    id: 'case',
+    track: 'control',
+    title: '9b. BEGIN CASE',
+    objective: 'Use BEGIN CASE so GRADE = 2 prints Good.',
+    starterPath: 'BP/CASE.DEMO.b',
+    hints: ['BEGIN CASE ... END CASE', 'First true CASE wins', 'CASE 1 is the default'],
+    validate: (out) => ({
+      pass: /\bGood\b/.test(out),
+      message: /\bGood\b/.test(out) ? 'Pass — CASE works.' : 'Expected Good',
+    }),
+  },
+  {
     id: 'for-loop',
     track: 'control',
-    title: '9. FOR / NEXT',
+    title: '10. FOR / NEXT',
     objective: 'Loop I from 1 to 5 and print each value.',
     starterPath: 'BP/LOOPS.b',
     hints: ['FOR I = 1 TO 5 ... NEXT I'],
@@ -125,7 +137,7 @@ export const LESSONS: Lesson[] = [
   {
     id: 'gosub',
     track: 'subroutines',
-    title: '10. GOSUB structure',
+    title: '11. GOSUB structure',
     objective: 'Use INIT/PROCESS/FINAL labels with GOSUB/RETURN.',
     starterPath: 'BP/GOSUB.DEMO.b',
     hints: ['GOSUB LABEL then LABEL: ... RETURN'],
@@ -137,7 +149,7 @@ export const LESSONS: Lesson[] = [
   {
     id: 'file-io',
     track: 'files',
-    title: '11. File OPEN/READ',
+    title: '12. File OPEN/READ',
     objective: 'Read customer 100001 from F.CUSTOMER and print the name.',
     starterPath: 'BP/FILE.IO.b',
     hints: ['OPEN FN TO F ELSE ... END', 'READ REC FROM F, ID ELSE ...'],
@@ -149,7 +161,7 @@ export const LESSONS: Lesson[] = [
   {
     id: 't24-sub',
     track: 't24',
-    title: '12. T24-style subroutine',
+    title: '13. T24-style subroutine',
     objective: 'Compile V.AUT.CNT, set ID.NEW, run and show account total.',
     starterPath: 'BP/V.AUT.CNT.b',
     hints: [

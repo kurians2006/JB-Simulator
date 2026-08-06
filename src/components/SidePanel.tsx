@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useIdeStore } from '../store/useIdeStore'
 import { LESSONS } from '../data/lessons'
 import { globalVfs } from '../engine/vfs'
+import { DocsPanel } from './DocsPanel'
 
 export function SidePanel() {
   const rightTab = useIdeStore((s) => s.rightTab)
@@ -22,9 +23,17 @@ export function SidePanel() {
   return (
     <aside className="panel side-right">
       <div className="tabs">
-        {(['terminal', 'errors', 'lessons', 'vfs'] as const).map((tab) => (
+        {(['terminal', 'errors', 'lessons', 'docs', 'vfs'] as const).map((tab) => (
           <button key={tab} className={`tab ${rightTab === tab ? 'active' : ''}`} onClick={() => setRightTab(tab)}>
-            {tab === 'terminal' ? 'Terminal' : tab === 'errors' ? `Errors (${errors.length})` : tab === 'lessons' ? 'Lessons' : 'VFS'}
+            {tab === 'terminal'
+              ? 'Terminal'
+              : tab === 'errors'
+                ? `Errors (${errors.length})`
+                : tab === 'lessons'
+                  ? 'Lessons'
+                  : tab === 'docs'
+                    ? 'Docs'
+                    : 'VFS'}
           </button>
         ))}
       </div>
@@ -94,6 +103,8 @@ export function SidePanel() {
             ))}
           </>
         )}
+
+        {rightTab === 'docs' && <DocsPanel />}
 
         {rightTab === 'vfs' && (
           <>

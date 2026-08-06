@@ -230,6 +230,35 @@ END
 `,
   },
   {
+    path: 'BP/CASE.DEMO.b',
+    content: `* BEGIN CASE / END CASE — multi-way IF for newcomers
+PROGRAM CASE.DEMO
+    GRADE = 2
+    BEGIN CASE
+    CASE GRADE = 1
+        CRT "Excellent"
+    CASE GRADE = 2
+        CRT "Good"
+    CASE 1
+        CRT "Keep learning"
+    END CASE
+END
+`,
+  },
+  {
+    path: 'BP/STRING.FUNCS.b',
+    content: `* Common string functions used in Transact coding
+PROGRAM STRING.FUNCS
+    S = "  Temenos Transact  "
+    CRT "TRIM  = [" : TRIM(S) : "]"
+    CRT "LEFT  = ":LEFT(TRIM(S), 7)
+    CRT "RIGHT = ":RIGHT(TRIM(S), 8)
+    CRT "UP    = ":UPCASE(TRIM(S))
+    CRT "SWAP  = ":SWAP(TRIM(S), " ", "_")
+END
+`,
+  },
+  {
     path: 'BP/ERRORS.DEMO.b',
     content: `* Intentionally broken — click Compile to see TAFJ-style errors
 PROGRAM ERRORS.DEMO

@@ -8,8 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "check": "tsx scripts/check-language.mts",
-    "check:samples": "tsx scripts/check-samples.mts"
+    "check": "tsx scripts/check-language.mts && tsx scripts/check-docs.mts",
+    "check:samples": "tsx scripts/check-samples.mts",
+    "check:docs": "tsx scripts/check-docs.mts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

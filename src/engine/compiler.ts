@@ -175,7 +175,10 @@ function buildBlocks(rawLines: RawLine[], fileName: string, errors: CompileError
 
       if (s.kind === 'if') {
         current().list.push(s)
-        stack.push({ list: s.thenBranch, frame: { type: 'if', stmt: s } })
+        // A single-line IF ... THEN ... [ELSE ...] is already complete.
+        if (!(s as Statement & { _inline?: boolean })._inline) {
+          stack.push({ list: s.thenBranch, frame: { type: 'if', stmt: s } })
+        }
         return
       }
 

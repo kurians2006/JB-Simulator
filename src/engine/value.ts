@@ -12,6 +12,13 @@ export function asNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
+/** jBC keeps 4 decimal places by default (PRECISION 4). */
+export function formatNumber(n: number, precision = 4): string {
+  if (!Number.isFinite(n)) return '0'
+  if (Number.isInteger(n)) return String(n)
+  return n.toFixed(precision).replace(/0+$/, '').replace(/\.$/, '')
+}
+
 export function isTruthy(v: unknown): boolean {
   const s = asString(v)
   if (s === '' || s === '0') return false

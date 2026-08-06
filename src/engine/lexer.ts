@@ -61,9 +61,12 @@ export function tokenizeLine(line: string, lineNo: number): Token[] {
       break
     }
 
-    // Rem style comment REM ...
-    if ((ch === 'R' || ch === 'r') && s.slice(i, i + 3).toUpperCase() === 'REM' && /[\s;]|$/.test(s[i + 3] ?? '')) {
-      break
+    // Rem style comment REM ... (must be the whole word, not a prefix of REMAINDER)
+    if ((ch === 'R' || ch === 'r') && s.slice(i, i + 3).toUpperCase() === 'REM') {
+      const after = s[i + 3]
+      if (after === undefined || /[\s;]/.test(after)) {
+        break
+      }
     }
 
     // Inline ; comment (jBC often uses ;* or trailing ;)

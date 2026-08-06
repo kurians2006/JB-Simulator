@@ -4,6 +4,7 @@ import {
   asString,
   compare,
   extract,
+  formatNumber,
   isTruthy,
   replaceExtract,
   substring,
@@ -367,7 +368,7 @@ export class Interpreter {
       case 'unary': {
         const v = this.eval(expr.expr)
         if (expr.op === 'NOT') return isTruthy(v) ? '0' : '1'
-        if (expr.op === '-') return String(-asNumber(v))
+        if (expr.op === '-') return formatNumber(-asNumber(v))
         return v
       }
       case 'binary': {
@@ -380,15 +381,15 @@ export class Interpreter {
         const r = asNumber(this.eval(expr.right))
         switch (expr.op) {
           case '+':
-            return String(l + r)
+            return formatNumber(l + r)
           case '-':
-            return String(l - r)
+            return formatNumber(l - r)
           case '*':
-            return String(l * r)
+            return formatNumber(l * r)
           case '/':
-            return String(r === 0 ? 0 : l / r)
+            return formatNumber(r === 0 ? 0 : l / r)
           case '^':
-            return String(l ** r)
+            return formatNumber(l ** r)
           default:
             return ''
         }

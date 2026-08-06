@@ -16,6 +16,8 @@ export class ParseError extends Error {
 class LineParser {
   private i = 0
   private tokens: Token[]
+  private trailingColon = false
+  private extractDepth = 0
   line: number
   constructor(tokens: Token[], line: number) {
     this.tokens = tokens
@@ -44,6 +46,16 @@ class LineParser {
     return null
   }
 
+  /** Consume an operator only when its text matches, so a non-match never eats a token. */
+  matchOp(...values: string[]): Token | null {
+    const t = this.peek()
+    if (t.type === 'OP' && values.includes(t.value)) {
+      this.i++
+      return t
+    }
+    return null
+  }
+
   expect(type: Token['type'], msg?: string): Token {
     const t = this.match(type)
     if (!t) {
@@ -64,6 +76,17 @@ class LineParser {
 
   parseStatement(): Statement | null {
     if (this.atEnd()) return { kind: 'empty', line: this.line }
+
+    const head = this.peek()
+    const next = this.peek(1)
+    if (head.type === 'IDENT' && RESERVED.has(head.value) && next.type === 'OP' && next.value === '=') {
+      throw new ParseError(
+        `Identifier '${head.value}' is a reserved word and cannot be used as a variable`,
+        this.line,
+        head.column,
+        'TAFJ-RESERVED',
+      )
+    }
 
     // LABEL: statement
     if (this.peek().type === 'IDENT' && this.peek(1).type === 'COLON' && !RESERVED.has(this.peek().value)) {
@@ -130,30 +153,45 @@ class LineParser {
       const exprs: Expr[] = []
       let suppressNl = false
       if (!this.atEnd()) {
+        this.trailingColon = false
         exprs.push(this.parseExpr())
-        while (this.match('COLON') || this.match('COMMA')) {
-          if (this.atEnd()) {
-            suppressNl = true
-            break
-          }
+        while (this.match('COMMA')) {
+          if (this.atEnd()) break
           exprs.push(this.parseExpr())
         }
-        if (this.match('COLON') && this.atEnd()) suppressNl = true
+        suppressNl = this.trailingColon
       }
       return { kind, line: this.line, exprs, suppressNl }
     }
 
     if (this.matchIdent('IF')) {
       const condition = this.parseExpr()
-      this.matchIdent('THEN') // optional THEN
-      return { kind: 'if', line: this.line, condition, thenBranch: [], elseBranch: [] }
+      const hasThen = !!this.matchIdent('THEN')
+      const stmt = {
+        kind: 'if',
+        line: this.line,
+        condition,
+        thenBranch: [] as Statement[],
+        elseBranch: [] as Statement[],
+      } as Extract<Statement, { kind: 'if' }> & { _inline?: boolean }
+
+      // Single-line form: IF cond THEN stmt [ELSE stmt]
+      if (hasThen && !this.atEnd()) {
+        stmt.thenBranch = this.parseInlineStatements()
+        if (this.matchIdent('ELSE')) stmt.elseBranch = this.parseInlineStatements()
+        stmt._inline = true
+      } else if (!hasThen && this.matchIdent('ELSE')) {
+        stmt.elseBranch = this.parseInlineStatements()
+        stmt._inline = true
+      }
+      return stmt
     }
 
     if (this.matchIdent('FOR')) {
       const variable = this.expectIdent().value
-      const eq = this.expect('OP', '= expected in FOR')
-      if (eq.value !== '=') {
-        throw new ParseError('FOR requires =', this.line, eq.column)
+      if (!this.matchOp('=')) {
+        const cur = this.peek()
+        throw new ParseError("FOR requires '=' after the loop variable", this.line, cur.column)
       }
       const from = this.parseExpr()
       this.matchIdent('TO')
@@ -212,9 +250,7 @@ class LineParser {
     if (this.matchIdent('EQUATE') || this.matchIdent('EQU')) {
       const name = this.expectIdent().value
       this.matchIdent('TO')
-      if (this.match('OP') && this.tokens[this.i - 1]!.value === '=') {
-        // EQUATE X = 1
-      }
+      this.matchOp('=')
       const value = this.parseExpr()
       return { kind: 'equate', line: this.line, name, value }
     }
@@ -234,13 +270,9 @@ class LineParser {
 
     if (this.matchIdent('COMMON')) {
       let named: string | undefined
-      if (this.match('OP') && this.tokens[this.i - 1]!.value === '/') {
-        // COMMON /NAME/ A,B — simplified
-      }
-      if (this.peek().type === 'OP' && this.peek().value === '/') {
-        this.match('OP')
+      if (this.matchOp('/')) {
         named = this.expectIdent().value
-        this.expect('OP')
+        this.matchOp('/')
       }
       const vars: string[] = []
       do {
@@ -329,8 +361,9 @@ class LineParser {
 
     // Assignment or expression
     const lhs = this.parseLValue()
-    if (this.match('OP') && ['=', ':=', '+=', '-=', '*='].includes(this.tokens[this.i - 1]!.value)) {
-      const op = this.tokens[this.i - 1]!.value
+    const assignTok = this.matchOp('=', ':=', '+=', '-=', '*=')
+    if (assignTok) {
+      const op = assignTok.value
       const rhs = this.parseExpr()
       if (op === '=') return { kind: 'assign', line: this.line, target: lhs, value: rhs }
       if (op === ':=') return { kind: 'assign', line: this.line, target: lhs, value: rhs }
@@ -347,6 +380,20 @@ class LineParser {
     return { kind: 'exprStmt', line: this.line, expr: lvalueToExpr(lhs) }
   }
 
+  /** Statements written on the same line, separated by ';', stopping at ELSE. */
+  private parseInlineStatements(): Statement[] {
+    const list: Statement[] = []
+    while (!this.atEnd()) {
+      if (this.peek().type === 'IDENT' && this.peek().value === 'ELSE') break
+      const before = this.i
+      const s = this.parseStatement()
+      if (s && s.kind !== 'empty') list.push(s)
+      if (this.i === before) break
+      if (!this.match('SEMI')) break
+    }
+    return list
+  }
+
   parseLValue(): LValue {
     const name = this.expectIdent('Variable name expected').value
     let base: LValue = { kind: 'var', name }
@@ -354,10 +401,15 @@ class LineParser {
     while (true) {
       if (this.match('LT')) {
         const indices: Expr[] = []
-        do {
-          indices.push(this.parseExpr())
-        } while (this.match('COMMA'))
-        this.expect('GT', 'Expected > to close extract')
+        this.extractDepth++
+        try {
+          do {
+            indices.push(this.parseExpr())
+          } while (this.match('COMMA'))
+          this.expect('GT', 'Expected > to close extract')
+        } finally {
+          this.extractDepth--
+        }
         base = { kind: 'extract', base, indices }
         continue
       }
@@ -380,8 +432,7 @@ class LineParser {
 
   private parseOr(): Expr {
     let left = this.parseAnd()
-    while (this.matchIdent('OR') || (this.match('OP') && this.tokens[this.i - 1]!.value === '!')) {
-      // ! sometimes used? stick to OR
+    while (this.matchIdent('OR')) {
       const right = this.parseAnd()
       left = { kind: 'binary', op: 'OR', left, right }
     }
@@ -408,8 +459,9 @@ class LineParser {
         left = { kind: 'binary', op: '<>', left, right: this.parseRelational() }
         continue
       }
-      if (this.match('OP') && ['=', '<>', '#', ':='].includes(this.tokens[this.i - 1]!.value)) {
-        const op = this.tokens[this.i - 1]!.value === '#' ? '<>' : this.tokens[this.i - 1]!.value
+      const opTok = this.matchOp('=', '<>', '#', ':=')
+      if (opTok) {
+        const op = opTok.value === '#' ? '<>' : opTok.value
         left = { kind: 'binary', op, left, right: this.parseRelational() }
         continue
       }
@@ -427,22 +479,35 @@ class LineParser {
         left = { kind: 'binary', op: map[op]!, left, right: this.parseConcat() }
         continue
       }
-      if (this.match('OP') && ['>', '<', '>=', '<='].includes(this.tokens[this.i - 1]!.value)) {
-        const op = this.tokens[this.i - 1]!.value
-        left = { kind: 'binary', op, left, right: this.parseConcat() }
+      const opTok = this.matchOp('>', '<', '>=', '<=')
+      if (opTok) {
+        left = { kind: 'binary', op: opTok.value, left, right: this.parseConcat() }
         continue
       }
-      // bare < > already used for extracts — comparison uses GT/LT keywords preferably
+      // A bare < or > outside an extract is a comparison; inside one, > closes the extract.
+      if (this.extractDepth === 0 && this.match('LT')) {
+        left = { kind: 'binary', op: '<', left, right: this.parseConcat() }
+        continue
+      }
+      if (this.extractDepth === 0 && this.match('GT')) {
+        left = { kind: 'binary', op: '>', left, right: this.parseConcat() }
+        continue
+      }
       break
     }
     return left
   }
 
   private parseConcat(): Expr {
-    let left = this.parseAdd()
+    const left = this.parseAdd()
     const parts: Expr[] = [left]
     let concat = false
     while (this.match('COLON')) {
+      // A colon at end of line suppresses the newline rather than concatenating.
+      if (this.atEnd()) {
+        this.trailingColon = true
+        break
+      }
       concat = true
       parts.push(this.parseAdd())
     }
@@ -452,19 +517,21 @@ class LineParser {
 
   private parseAdd(): Expr {
     let left = this.parseMul()
-    while (this.match('OP') && ['+', '-'].includes(this.tokens[this.i - 1]!.value)) {
-      const op = this.tokens[this.i - 1]!.value
-      left = { kind: 'binary', op, left, right: this.parseMul() }
+    let opTok = this.matchOp('+', '-')
+    while (opTok) {
+      left = { kind: 'binary', op: opTok.value, left, right: this.parseMul() }
+      opTok = this.matchOp('+', '-')
     }
     return left
   }
 
   private parseMul(): Expr {
     let left = this.parseUnary()
-    while (this.match('OP') && ['*', '/', '^', '**'].includes(this.tokens[this.i - 1]!.value)) {
-      let op = this.tokens[this.i - 1]!.value
-      if (op === '**') op = '^'
+    let opTok = this.matchOp('*', '/', '^', '**')
+    while (opTok) {
+      const op = opTok.value === '**' ? '^' : opTok.value
       left = { kind: 'binary', op, left, right: this.parseUnary() }
+      opTok = this.matchOp('*', '/', '^', '**')
     }
     return left
   }
@@ -473,9 +540,9 @@ class LineParser {
     if (this.matchIdent('NOT')) {
       return { kind: 'unary', op: 'NOT', expr: this.parseUnary() }
     }
-    if (this.match('OP') && ['-', '+'].includes(this.tokens[this.i - 1]!.value)) {
-      const op = this.tokens[this.i - 1]!.value as '-' | '+'
-      return { kind: 'unary', op, expr: this.parseUnary() }
+    const opTok = this.matchOp('-', '+')
+    if (opTok) {
+      return { kind: 'unary', op: opTok.value as '-' | '+', expr: this.parseUnary() }
     }
     return this.parsePrimary()
   }
@@ -517,14 +584,27 @@ class LineParser {
 
   private parsePostfix(expr: Expr): Expr {
     while (true) {
-      if (this.match('LT')) {
-        const indices: Expr[] = []
-        do {
-          indices.push(this.parseExpr())
-        } while (this.match('COMMA'))
-        this.expect('GT')
-        expr = { kind: 'extract', base: expr, indices }
-        continue
+      if (this.peek().type === 'LT') {
+        // `REC<1>` is an extract, but `A < B` is a comparison; rewind if no closing >.
+        const save = this.i
+        const savedTrailingColon = this.trailingColon
+        this.match('LT')
+        this.extractDepth++
+        try {
+          const indices: Expr[] = []
+          do {
+            indices.push(this.parseExpr())
+          } while (this.match('COMMA'))
+          this.expect('GT')
+          expr = { kind: 'extract', base: expr, indices }
+          continue
+        } catch {
+          this.i = save
+          this.trailingColon = savedTrailingColon
+          break
+        } finally {
+          this.extractDepth--
+        }
       }
       if (this.match('LBRACK')) {
         const start = this.parseExpr()

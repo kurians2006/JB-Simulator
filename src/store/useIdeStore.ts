@@ -160,21 +160,30 @@ export const useIdeStore = create<IdeState>()(
       .filter((s, i, arr) => s.length > 0 || i < arr.length - 1)
 
     const writeLines: string[] = []
+    let pendingLine = ''
+    let lineOpen = false
+
     const hooks = {
       write: (text: string, newline: boolean) => {
-        writeLines.push(newline ? text : text)
-        // merge suppress-nl by mutating last — simplified: always push
         set((s) => {
           const lines = [...s.terminalLines]
-          if (!newline && lines.length) {
+          if (lineOpen && lines.length) {
             lines[lines.length - 1] = (lines[lines.length - 1] ?? '') + text
           } else {
             lines.push(text)
           }
           return { terminalLines: lines }
         })
+        lineOpen = !newline
+
+        pendingLine += text
+        if (newline) {
+          writeLines.push(pendingLine)
+          pendingLine = ''
+        }
       },
       log: (level: CompileLogLine['level'], text: string) => {
+        lineOpen = false
         set((s) => ({ terminalLines: [...s.terminalLines, `[${level}] ${text}`] }))
       },
       input: async () => {
@@ -212,6 +221,7 @@ END
     }))
 
     const result = await runUnit(runTarget, hooks, inputs)
+    if (pendingLine !== '') writeLines.push(pendingLine)
 
     let lessonMessage = ''
     const lesson = LESSONS.find((l) => l.id === get().activeLessonId)

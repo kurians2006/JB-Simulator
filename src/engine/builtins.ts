@@ -1,4 +1,4 @@
-import { asNumber, asString, FM, SM, VM } from './value'
+import { asNumber, asString, formatNumber, FM, SM, VM } from './value'
 import type { JbValue } from './types'
 
 type BuiltinFn = (args: JbValue[]) => JbValue
@@ -134,7 +134,7 @@ export const builtins: Record<string, BuiltinFn> = {
     return ''
   },
   ASSIGNED: (a) => (a[0] !== undefined && a[0] !== null ? '1' : '0'),
-  SQRT: (a) => String(Math.sqrt(asNumber(a[0]))),
+  SQRT: (a) => formatNumber(Math.sqrt(asNumber(a[0]))),
   RND: (a) => String(Math.floor(Math.random() * asNumber(a[0]))),
 }
 

@@ -104,7 +104,48 @@ const cases: Array<{ name: string; src: string; expect: string }> = [
   },
 ]
 
+/** Programs that must be rejected by the compiler. */
+const badCases: Array<{ name: string; src: string; expectLine: number }> = [
+  {
+    name: 'garbage characters on a line',
+    src: `PROGRAM T\nCRT "TODO"\njj*&^^^^**YYY\nEND\n`,
+    expectLine: 3,
+  },
+  {
+    name: 'unknown character',
+    src: `PROGRAM T\nA = 1 & 2\nEND\n`,
+    expectLine: 2,
+  },
+  {
+    name: 'two statements without separator',
+    src: `PROGRAM T\nA = 1 B = 2\nEND\n`,
+    expectLine: 2,
+  },
+  {
+    name: 'trailing junk after CRT',
+    src: `PROGRAM T\nCRT "hi" ]]\nEND\n`,
+    expectLine: 2,
+  },
+  {
+    name: 'NEXT variable does not match FOR',
+    src: `PROGRAM T\nFOR I = 1 TO 3\nCRT I\nNEXT J\nEND\n`,
+    expectLine: 4,
+  },
+]
+
 let failures = 0
+
+for (const c of badCases) {
+  const r = compileSource(c.src, 'BP/T.b')
+  const hit = r.errors.find((e) => e.line === c.expectLine)
+  if (r.ok || !hit) {
+    failures++
+    console.log(`FAIL ${c.name}: expected an error on line ${c.expectLine}`)
+    console.log('  errors  :', JSON.stringify(r.errors))
+  } else {
+    console.log(`ok   ${c.name} -> ${hit.message}`)
+  }
+}
 
 for (const c of cases) {
   const r = await run(c.src)

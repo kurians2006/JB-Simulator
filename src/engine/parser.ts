@@ -88,16 +88,11 @@ class LineParser {
       )
     }
 
-    // LABEL: statement
+    // LABEL: — any statement after it is picked up by parseLine
     if (this.peek().type === 'IDENT' && this.peek(1).type === 'COLON' && !RESERVED.has(this.peek().value)) {
       const name = this.expectIdent().value
       this.expect('COLON')
-      if (this.atEnd()) return { kind: 'label', line: this.line, name }
-      // label followed by statement on same line
-      const rest = this.parseStatement()
-      if (!rest) return { kind: 'label', line: this.line, name }
-      // Represent as label then rely on compile to register; keep statement separately via wrapper
-      return { kind: 'label', line: this.line, name, ...(rest as object), _rest: rest } as Statement
+      return { kind: 'label', line: this.line, name }
     }
 
     if (this.matchIdent('PROGRAM')) {
@@ -261,10 +256,16 @@ class LineParser {
     }
 
     if (this.matchIdent('REPEAT') || this.matchIdent('NEXT') || this.matchIdent('ELSE')) {
+      const which = this.tokens[this.i - 1]!.value
+      const args: Expr[] = []
+      // `NEXT I` names the loop variable being closed
+      if (which === 'NEXT' && this.peek().type === 'IDENT' && !RESERVED.has(this.peek().value)) {
+        args.push({ kind: 'string', value: this.expectIdent().value })
+      }
       return {
         kind: 'exprStmt',
         line: this.line,
-        expr: { kind: 'call', name: `__${this.tokens[this.i - 1]!.value}`, args: [] },
+        expr: { kind: 'call', name: `__${which}`, args },
       }
     }
 
@@ -351,8 +352,16 @@ class LineParser {
       this.matchIdent('TO')
       const toVar = this.expectIdent().value
       const elseBranch: Statement[] = []
-      const hasElse = !!this.matchIdent('ELSE')
-      return { kind: 'open', line: this.line, path, toVar, elseBranch, ...(hasElse ? { _inlineElse: true } : {}) } as Statement
+      const stmt = { kind: 'open', line: this.line, path, toVar, elseBranch } as Extract<
+        Statement,
+        { kind: 'open' }
+      > & { _inlineElse?: boolean }
+      if (this.matchIdent('ELSE')) {
+        // `ELSE STOP` on one line, or a block when ELSE ends the line
+        if (this.atEnd()) stmt._inlineElse = true
+        else stmt.elseBranch = this.parseInlineStatements()
+      }
+      return stmt
     }
 
     if (this.matchIdent('READ')) {
@@ -362,8 +371,15 @@ class LineParser {
       this.match('COMMA')
       const id = this.parseExpr()
       const elseBranch: Statement[] = []
-      const hasElse = !!this.matchIdent('ELSE')
-      return { kind: 'read', line: this.line, varName, fromVar, id, elseBranch, ...(hasElse ? { _inlineElse: true } : {}) } as Statement
+      const stmt = { kind: 'read', line: this.line, varName, fromVar, id, elseBranch } as Extract<
+        Statement,
+        { kind: 'read' }
+      > & { _inlineElse?: boolean }
+      if (this.matchIdent('ELSE')) {
+        if (this.atEnd()) stmt._inlineElse = true
+        else stmt.elseBranch = this.parseInlineStatements()
+      }
+      return stmt
     }
 
     if (this.matchIdent('WRITE')) {
@@ -421,6 +437,35 @@ class LineParser {
 
     // CALL-less function as statement
     return { kind: 'exprStmt', line: this.line, expr: lvalueToExpr(lhs) }
+  }
+
+  /**
+   * Parse a whole source line. Every token must be consumed, otherwise the
+   * leftover text is reported instead of being silently ignored.
+   */
+  parseLine(): Statement[] {
+    const list: Statement[] = []
+    while (!this.atEnd()) {
+      const before = this.i
+      const stmt = this.parseStatement()
+      if (stmt && stmt.kind !== 'empty') list.push(stmt)
+      if (this.i === before) break
+      // A label may be followed directly by a statement on the same line
+      if (stmt && stmt.kind === 'label') continue
+      if (this.match('SEMI')) continue
+      break
+    }
+
+    if (!this.atEnd()) {
+      const t = this.peek()
+      const shown = t.value || t.type
+      throw new ParseError(
+        `Unexpected '${shown}' — this is not valid jBC syntax`,
+        this.line,
+        t.column,
+      )
+    }
+    return list
   }
 
   /** Statements written on the same line, separated by ';', stopping at ELSE. */
@@ -672,7 +717,7 @@ function lvalueToExpr(lv: LValue): Expr {
 export interface RawLine {
   line: number
   text: string
-  stmt: Statement | null
+  stmts: Statement[]
   error?: CompileError
 }
 
@@ -686,7 +731,7 @@ export function parseSource(source: string, fileName: string): RawLine[] {
     // Remove leading $INSERT style already handled
     const trimmed = text.trim()
     if (trimmed === '' || trimmed.startsWith('*') || /^REM(\s|$)/i.test(trimmed)) {
-      result.push({ line: lineNo, text, stmt: { kind: 'empty', line: lineNo } })
+      result.push({ line: lineNo, text, stmts: [] })
       continue
     }
 
@@ -698,14 +743,13 @@ export function parseSource(source: string, fileName: string): RawLine[] {
     try {
       const tokens = tokenizeLine(text, lineNo)
       const parser = new LineParser(tokens, lineNo)
-      const stmt = parser.parseStatement()
-      result.push({ line: lineNo, text, stmt })
+      result.push({ line: lineNo, text, stmts: parser.parseLine() })
     } catch (e) {
       const err = e as ParseError
       result.push({
         line: lineNo,
         text,
-        stmt: null,
+        stmts: [],
         error: {
           severity: 'error',
           file: fileName,

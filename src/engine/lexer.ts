@@ -29,6 +29,7 @@ export type TokenType =
   | 'GT'
   | 'LBRACK'
   | 'RBRACK'
+  | 'UNKNOWN'
   | 'EOL'
   | 'EOF'
 
@@ -141,7 +142,8 @@ export function tokenizeLine(line: string, lineNo: number): Token[] {
       continue
     }
 
-    // Unknown char — skip but keep going
+    // Keep unknown characters as tokens so the parser can report them.
+    tokens.push({ type: 'UNKNOWN', value: ch, line: lineNo, column: start + 1 })
     i++
   }
 

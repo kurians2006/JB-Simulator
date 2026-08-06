@@ -28,20 +28,21 @@ function err(
 function expandInserts(rawLines: RawLine[], fileName: string, errors: CompileError[]): RawLine[] {
   const out: RawLine[] = []
   for (const rl of rawLines) {
-    if (rl.stmt?.kind === 'insert') {
-      const body = INSERTS[rl.stmt.name] ?? INSERTS[rl.stmt.name.replace(/^I_/, 'I_')]
+    const insert = rl.stmts.length === 1 && rl.stmts[0]!.kind === 'insert' ? rl.stmts[0]! : null
+    if (insert) {
+      const body = INSERTS[insert.name] ?? INSERTS[insert.name.replace(/^I_/, 'I_')]
       if (!body) {
         err(
           errors,
           fileName,
           rl.line,
-          `Cannot find INSERT item '${rl.stmt.name}'`,
+          `Cannot find INSERT item '${insert.name}'`,
           'TAFJ-INSERT',
         )
         out.push(rl)
         continue
       }
-      const nested = parseSource(body, `${rl.stmt.name}`)
+      const nested = parseSource(body, `${insert.name}`)
       for (const n of nested) {
         out.push({ ...n, line: rl.line }) // map errors to insert line for simplicity
       }
@@ -69,20 +70,10 @@ function buildBlocks(rawLines: RawLine[], fileName: string, errors: CompileError
       errors.push(rl.error)
       continue
     }
-    if (!rl.stmt || rl.stmt.kind === 'empty') continue
-
-    // Handle label + rest packed
-    const stmt = rl.stmt as Statement & { _rest?: Statement }
-    if (stmt.kind === 'label') {
-      current().list.push({ kind: 'label', line: stmt.line, name: stmt.name })
-      if (stmt._rest) {
-        // process rest as if it were the line
-        processStmt(stmt._rest)
-      }
-      continue
+    for (const stmt of rl.stmts) {
+      if (stmt.kind === 'empty') continue
+      processStmt(stmt)
     }
-
-    processStmt(stmt)
 
     function processStmt(s: Statement) {
       // END ELSE (single line)
@@ -153,9 +144,21 @@ function buildBlocks(rawLines: RawLine[], fileName: string, errors: CompileError
 
       // NEXT
       if (s.kind === 'exprStmt' && s.expr.kind === 'call' && s.expr.name === '__NEXT') {
-        if (!current().frame || current().frame?.type !== 'for') {
+        const frame = current().frame
+        if (!frame || frame.type !== 'for') {
           err(errors, fileName, s.line, "'NEXT' without matching 'FOR'", 'TAFJ-BLOCK')
           return
+        }
+        const named = s.expr.args[0]
+        const forStmt = frame.stmt as Extract<Statement, { kind: 'for' }>
+        if (named && named.kind === 'string' && named.value !== forStmt.variable) {
+          err(
+            errors,
+            fileName,
+            s.line,
+            `'NEXT ${named.value}' does not match 'FOR ${forStmt.variable}'`,
+            'TAFJ-BLOCK',
+          )
         }
         stack.pop()
         return
@@ -347,7 +350,8 @@ export function compileSource(source: string, fileName: string): CompileResult {
   log(logs, 'DEBUG', 'Pass 1: lexical analysis')
 
   let raw = parseSource(source, fileName)
-  log(logs, 'DEBUG', `Pass 2: expanding INSERT (${raw.filter((r) => r.stmt?.kind === 'insert').length} item(s))`)
+  const insertCount = raw.filter((r) => r.stmts.some((s) => s.kind === 'insert')).length
+  log(logs, 'DEBUG', `Pass 2: expanding INSERT (${insertCount} item(s))`)
   raw = expandInserts(raw, fileName, errors)
 
   log(logs, 'DEBUG', 'Pass 3: syntax & block structure')

@@ -131,6 +131,21 @@ const badCases: Array<{ name: string; src: string; expectLine: number }> = [
     src: `PROGRAM T\nFOR I = 1 TO 3\nCRT I\nNEXT J\nEND\n`,
     expectLine: 4,
   },
+  {
+    name: 'bare variable is not a statement',
+    src: `PROGRAM T\nsewewrrr\nCRT "HELLO"\nEND\n`,
+    expectLine: 2,
+  },
+  {
+    name: 'misspelled keyword',
+    src: `PROGRAM T\nCRTT "hi"\nEND\n`,
+    expectLine: 2,
+  },
+  {
+    name: 'bare literal is not a statement',
+    src: `PROGRAM T\n42\nEND\n`,
+    expectLine: 2,
+  },
 ]
 
 let failures = 0

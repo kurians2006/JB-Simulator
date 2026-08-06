@@ -419,6 +419,7 @@ class LineParser {
     }
 
     // Assignment or expression
+    const startTok = this.peek()
     const lhs = this.parseLValue()
     const assignTok = this.matchOp('=', ':=', '+=', '-=', '*=')
     if (assignTok) {
@@ -435,8 +436,13 @@ class LineParser {
       }
     }
 
-    // CALL-less function as statement
-    return { kind: 'exprStmt', line: this.line, expr: lvalueToExpr(lhs) }
+    // A value on its own does nothing, so jBC rejects it as a statement.
+    const name = startTok.value
+    throw new ParseError(
+      `'${name}' is not a statement — expected an assignment such as ${name} = ... , or a keyword like CRT, IF or CALL`,
+      this.line,
+      startTok.column,
+    )
   }
 
   /**
